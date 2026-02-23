@@ -1,0 +1,32 @@
+###
+#
+#This doesn't really work on macbook air and requires way too much memory, moving to native llama
+#
+###
+
+
+services:
+  llama-agent:
+    image: ollama/ollama:latest
+    container_name: llama-agent
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama_llama:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    # Logic: Start server in background, pull model (checks local volume first), then keep container alive
+    entrypoint: [ "/bin/sh", "-c", "ollama serve & sleep 10 && ollama pull llama3 && tail -f /dev/null" ]
+    restart: always
+
+  mistral-agent:
+    image: ollama/ollama:latest
+    container_name: mistral-agent
+    ports:
+      - "11435:11434"
+    volumes:
+      - ./ollama_mistral:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    entrypoint: [ "/bin/sh", "-c", "ollama serve & sleep 10 && ollama pull mistral && tail -f /dev/null" ]
+    restart: always
