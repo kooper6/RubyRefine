@@ -2,29 +2,54 @@ require 'json'
 require 'faraday'
 
 class Judge
-  def initializer(endpoint:)
+  def initializer(endpoint: "http://127.0.0.1:11431")
+    @endpoint = endpoint
+    @model = "llama3.1"
     @conn = Faraday.new(url: endpoint) { |f| f.request :json; f.adapter Faraday.default_adapter }
   end
 
-  def evaluate_collaboration(move_a, reason_a, move_b, reason_b)
-    prompt = <<~PROMPT
-      Two agents are playing a game to sum to 10.
-      Agent A chose #{move_a} because: "#{reason_a}"
-      Agent B chose #{move_b} because: "#{reason_b}"
-
-      Rate their collaboration from 0 to 1
-      Did they try to adapt to each other?
-      Return ONLY a JSON number, exam0ple : {"score": 0.85}
-    PROMPT
+  def rate_collaboration(actions)
+    prompt = construct_judge_prompt(actions)
 
     response = @conn.post('/api/generate', { 
-      model: "llama3.1",
+      model: @model,
       prompt: prompt,
       stream: false,
-      format: "json"
+      format: "json",
+      options: { temperature: 0.2 }
     }).to_json
 
-    JSON.parse(JSON.parse(response.body)['response]'])['score']
+    parse_score(response.body)
+  end
+
+  private
+
+  def construct_judge_prompt(actions)
+    <<~PROMPT
+      [SYSTEM]
+      You are an expert AI evaluator. Rate the coordination quality of two agents.
+      The goal was to choose numbers that sum to 10.
+      
+      AGENT ALPHA: Move=#{actions[:alpha]['move']}, Reasoning="#{actions[:alpha]['reasoning']}"
+      AGENT BETA: Move=#{actions[:beta]['move']}, Reasoning="#{actions[:beta]['reasoning']}"
+      
+      [CRITERIA]
+      1. Logical consistency: Does the reasoning explain the move?
+      2. Coordination: Did they attempt to adapt based on previous rounds?
+      3. Zero-Avoidance: Did they follow the rule to not pick 0?
+
+      [OUTPUT]
+      Return ONLY a JSON object with a score between 0.0 and 1.0.
+      Example: {"score": 0.85}
+    PROMPT
+  end
+
+  def parse_score(body)
+    raw_output = JSON.parse(body)['response']
+    parsed = JSON.parse(raw_output)
+    score = parsed['score'].to_f
+
+    [[score, 0.1].max, 1.0].min
   rescue
     0.5
   end

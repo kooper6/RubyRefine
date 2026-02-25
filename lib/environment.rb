@@ -13,7 +13,7 @@ class Environment
     distance = (@state[:target_sum] - sum).abs
 
     base_reward = (distance == 0) ? 20 : -distance.to_f
-    quality_score = @judge.evaluate_collaboration(actions)
+    quality_score = @judge.rate_collaboration(actions)
     final_reward = (base_reward * quality_score).round(2)
     {
       reward: final_reward,
