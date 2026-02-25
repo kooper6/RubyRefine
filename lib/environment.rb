@@ -40,7 +40,8 @@ class Environment
       f.write(code)
       f.flush
       output = `rubocop #{f.path} --format json --lint`
-      offenses = data.dig('files, 0, 'offenses')&.size || 0 
+      data = JSON.parse(output)
+      offenses = data.dig('files', 0, 'offenses')&.size || 0 
       score = [1.0 - (offenses * 0.1), 0.0].max
     end
     score
