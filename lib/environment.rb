@@ -1,25 +1,50 @@
 require_relative 'judge'
+require 'tempfile'
 
 class Environment
-  def initialize(target_sum: 10)
-    @state = { target_sum: target_sum }
+  attr_reader: state
 
+  def initialize(target_sum: 10)
     @judge = Judge.new(endpoint: "127.0.0.1:11431")
+
+    @state = { 
+      current_task: "General Code Review",
+      context_files: [],
+      standards: "Solid, DRY, Perfromance"
+    }
   end
 
   def step(actions)
-    sum = actions.values.map { |a| a['move'].to_i }.sum
+    code = actions[:alpha]['code']
 
-    distance = (@state[:target_sum] - sum).abs
+    style_score = perform_static_analysis(code)
 
-    base_reward = (distance == 0) ? 20 : -distance.to_f
-    quality_score = @judge.rate_collaboration(actions)
-    final_reward = (base_reward * quality_score).round(2)
+    rewiew_quality = @judge.evaluate_review_depth(actions[:alpha], actions[:beta])
+
+    final_reward = (style_score * 4) + (rewiew_quality * 6) #rubocop 40, logic 60
+
     {
-      reward: final_reward,
-      sum: sum,
-      success: (sum == @state[:target_sum]),
-      quality: quality_score
+      reward: final_reward.round(2),
+      style_score: style_score,
+      rewiew_quality: rewiew_quality['score'],
+      judge_feedback: rewiew_quality['feedback']
     }
+  end
+
+  private
+
+  def perform_static_analysis(code)
+    return 0.0 if code.empty?
+    score = 0.0
+    Tempfile.create(['dev', '.rb']) do |f|
+      f.write(code)
+      f.flush
+      output = `rubocop #{f.path} --format json --lint`
+      offenses = data.dig('files, 0, 'offenses')&.size || 0 
+      score = [1.0 - (offenses * 0.1), 0.0].max
+    end
+    score
+  rescue
+    0.0
   end
 end
