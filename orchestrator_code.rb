@@ -32,6 +32,8 @@ MAX_ROUNDS.times do |i|
 
   actions = { alpha: final_action, beta: critique }
 
+  result = env.step(actions)
+
   history << { 
     round: round_num,
     task: env.state[:current_task],
