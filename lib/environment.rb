@@ -4,8 +4,8 @@ require 'tempfile'
 class Environment
   attr_reader: state
 
-  def initialize(target_sum: 10)
-    @judge = Judge.new(endpoint: "127.0.0.1:11431")
+  def initialize
+    @judge = Judge.new(endpoint: "127.0.0.1:11433")
 
     @state = { 
       current_task: "General Code Review",
