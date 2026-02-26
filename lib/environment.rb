@@ -33,6 +33,16 @@ class Environment
 
   private
 
+  def valid_syntax?(code)
+    return false if code.empty?
+
+    Tempfile.create(['syntax_check', '.rb']) do |f|
+      f.write(code)
+      f.flush
+      system("ruby -c #{f.path} > /dev/null 2>&1")
+    end
+  end
+
   def perform_static_analysis(code)
     return 0.0 if code.empty?
     score = 0.0
