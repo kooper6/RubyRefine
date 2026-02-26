@@ -15,19 +15,22 @@ class Environment
   end
 
   def step(actions)
-    code = actions[:alpha]['code']
+    code = actions[:alpha]['code'] || ""
+    
+    unless valid_syntax?(code)
+      return { reward: -10, style_score: 0, review_quality: 0, judge_feedback: "CRITICAL: Syntax Error. Code will not execute."}
 
     style_score = perform_static_analysis(code)
 
-    rewiew_quality = @judge.evaluate_review_depth(actions[:alpha], actions[:beta])
+    review_quality = @judge.evaluate_review_depth(actions[:alpha], actions[:beta])
 
-    final_reward = (style_score * 4) + (rewiew_quality * 6) #rubocop 40, logic 60
+    final_reward = (style_score * 4) + (review_quality * 6) #rubocop 40, logic 60
 
     {
       reward: final_reward.round(2),
       style_score: style_score,
-      rewiew_quality: rewiew_quality['score'],
-      judge_feedback: rewiew_quality['feedback']
+      review_quality: review_quality['score'],
+      judge_feedback: review_quality['feedback']
     }
   end
 
